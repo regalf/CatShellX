@@ -86,7 +86,7 @@ make
 ```
 
 > A detailed build guide — flags, targets, overrides, troubleshooting — is
-> on the [wiki: Building](https://github.com/regalf/CatShellX/wiki/Building).
+> on the [wiki: Installation](https://github.com/regalf/CatShellX/wiki/Installation).
 
 Run:
 
