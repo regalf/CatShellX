@@ -1,6 +1,8 @@
 # Build artifacts
 catshellx
 tests/ptytest
+CatShellX-*.pkg
+CatShellX-*.dmg
 
 # sshfs residue
 .fuse_hidden*
