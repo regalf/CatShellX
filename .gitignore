@@ -6,6 +6,7 @@ CatShellX-*.dmg
 
 # sshfs residue
 .fuse_hidden*
+._*
 
 # Editor / OS
 .DS_Store
