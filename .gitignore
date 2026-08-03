@@ -8,6 +8,9 @@ CatShellX-*.dmg
 .fuse_hidden*
 ._*
 
+# Internal docs (agent-facing analysis report)
+ANALISI_CODICE.md
+
 # Editor / OS
 .DS_Store
 *.swp
