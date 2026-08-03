@@ -222,6 +222,8 @@ static void mark_edited(editor *e)
         e->undoidx--;
     }
     e->undo[e->nundo].text = strdup(e->buf);
+    if (!e->undo[e->nundo].text)
+        return;
     e->undo[e->nundo].pos = e->pos;
     e->nundo++;
     e->undoidx = e->nundo - 1;
@@ -264,7 +266,10 @@ static void kill_push(editor *e, const char *s, size_t n)
         e->kills = nk;
         e->killcap = nc;
     }
-    e->kills[e->nkills++] = strdup(tmp);
+    char *dup = strdup(tmp);
+    if (!dup)
+        return;
+    e->kills[e->nkills++] = dup;
     e->killidx = e->nkills - 1;
     e->yank_idx = e->killidx;
 }

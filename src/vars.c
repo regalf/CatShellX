@@ -137,3 +137,16 @@ void csx_var_init(void)
 {
     csx_var_sync_cwd();
 }
+
+void csx_var_shutdown(void)
+{
+    size_t i;
+    for (i = 0; i < nvars; i++) {
+        free(svars[i].name);
+        free(svars[i].value);
+    }
+    free(svars);
+    svars = NULL;
+    nvars = 0;
+    svars_cap = 0;
+}

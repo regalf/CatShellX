@@ -164,3 +164,16 @@ int csx_alias_expand_cmd(char **words, int *nwords)
     int r = expand_once(words, nwords, 0);
     return r > 0;
 }
+
+void csx_alias_shutdown(void)
+{
+    size_t i;
+    for (i = 0; i < naliases; i++) {
+        free(aliases[i].name);
+        free(aliases[i].value);
+    }
+    free(aliases);
+    aliases = NULL;
+    naliases = 0;
+    aliases_cap = 0;
+}

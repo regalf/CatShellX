@@ -5,18 +5,19 @@
 #include <ctype.h>
 
 /*
- * Read one raw shell token into a wordlist. Quotes and backslashes are
- * preserved so the expander (expand.c) can interpret them quote-aware.
- * Stops at whitespace or a control operator. Leaves *pp pointing at the
- * first unconsumed character.
+ * Read one raw shell token.  Quotes and backslashes are preserved so the
+ * expander (expand.c) can interpret them quote-aware; $VAR/$()/$? are NOT
+ * expanded here, they are deferred to execution time (execute.c) so that
+ * $? reflects the previous command and $(...) runs in the right order.
+ * Stops at whitespace or a control operator.  Leaves *pp pointing at the
+ * first unconsumed character.  Returns a malloc'd copy, or NULL if empty.
  */
-static void read_words(const char **pp, csx_wordlist *wl)
+static char *read_raw_word(const char **pp)
 {
     const char *p = *pp;
     strbuf raw;
     int paren = 0;
 
-    csx_wl_init(wl);
     sb_init(&raw);
     while (*p) {
         char c = *p;
@@ -69,8 +70,11 @@ static void read_words(const char **pp, csx_wordlist *wl)
         sb_putc(&raw, *p++);
     }
     *pp = p;
-    csx_expand_word(sb_str(&raw), wl);
-    sb_free(&raw);
+    if (raw.len == 0) {
+        sb_free(&raw);
+        return NULL;
+    }
+    return sb_detach(&raw);
 }
 
 static csx_cmd *ensure_cmd(csx_node **cur)
@@ -82,8 +86,12 @@ static csx_cmd *ensure_cmd(csx_node **cur)
 
 static void finish_cmd(csx_node *cur)
 {
-    if (cur)
+    if (cur) {
+        csx_cmd *c = &cur->cmds[cur->ncmds];
+        if (c->nwords > 0)
+            c->words[c->nwords] = NULL;
         cur->ncmds++;
+    }
 }
 
 static void finish_node(csx_node **head, csx_node **tail, csx_node **cur, csx_op op)
@@ -150,18 +158,10 @@ csx_node *csx_parse(const char *line)
                     r->dup_fd = fd;
                 }
             } else {
-                csx_wordlist wl;
-                size_t k;
                 while (*p == ' ' || *p == '\t')
                     p++;
-                if (*p) {
-                    read_words(&p, &wl);
-                    if (wl.count > 0)
-                        r->target = wl.items[0];
-                    for (k = 1; k < wl.count; k++)
-                        free(wl.items[k]);
-                    free(wl.items);
-                }
+                if (*p)
+                    r->target = read_raw_word(&p);
             }
             c->nredirs++;
             continue;
@@ -202,21 +202,15 @@ csx_node *csx_parse(const char *line)
 
         /* --- word --- */
         {
-            csx_wordlist wl;
-            size_t k;
-            csx_cmd *c = NULL;
-            read_words(&p, &wl);
-            for (k = 0; k < wl.count; k++) {
-                if (!wl.items[k])
-                    continue;
-                if (!c)
-                    c = ensure_cmd(&cur);
+            char *tok = read_raw_word(&p);
+            if (tok) {
+                csx_cmd *c = ensure_cmd(&cur);
                 if (c->nwords < CSX_MAX_WORDS)
-                    c->words[c->nwords++] = wl.items[k];
+                    c->words[c->nwords++] = tok;
                 else
-                    free(wl.items[k]);
+                    free(tok);
+                c->words[c->nwords] = NULL;
             }
-            free(wl.items);
         }
     }
 

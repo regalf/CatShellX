@@ -22,7 +22,7 @@ typedef struct {
 } csx_redir;
 
 typedef struct {
-    char *words[CSX_MAX_WORDS];
+    char *words[CSX_MAX_WORDS + 1]; /* +1: NULL sentinel for execvp */
     int nwords;
     csx_redir redirs[CSX_MAX_REDIR];
     int nredirs;

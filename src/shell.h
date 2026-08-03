@@ -57,6 +57,7 @@ void csx_job_init(void);
 int  csx_jobs(void);
 int  csx_job_fg(const char *spec);
 int  csx_job_bg(const char *spec);
+void csx_job_shutdown(void);
 
 /* ------------------------------------------------------------------ */
 /* Shell variables (set/export/unset, $PWD/$OLDPWD sync)               */
@@ -68,6 +69,7 @@ void csx_var_unset(const char *name);
 void csx_var_list(FILE *out, int only_exported);
 void csx_var_init(void);
 void csx_var_sync_cwd(void);
+void csx_var_shutdown(void);
 
 /* ------------------------------------------------------------------ */
 /* Aliases (alias/unalias, first-token expansion)                      */
@@ -79,6 +81,7 @@ int  csx_alias_list(FILE *out);
 size_t csx_alias_count(void);
 const char *csx_alias_name(size_t i);
 int  csx_alias_expand_cmd(char **words, int *nwords);
+void csx_alias_shutdown(void);
 
 /* ------------------------------------------------------------------ */
 /* History                                                             */
@@ -92,6 +95,7 @@ const char *hist_nav_next(void);
 const char *hist_search(const char *q);
 const char *hist_search_older(const char *q);
 const char *hist_find_prefix(const char *p);
+void hist_shutdown(void);
 
 /* ------------------------------------------------------------------ */
 /* Line editor                                                         */

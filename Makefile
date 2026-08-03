@@ -69,7 +69,7 @@ test: $(TARGET) $(PTYTEST)
 	rm -f /tmp/csx_home/.catshellxrc /tmp/csx_home/sourcerc
 
 clean:
-	rm -f $(TARGET) src/*.o
+	rm -f $(TARGET) src/*.o tests/ptytest
 	@echo "Clean."
 
 ssh:

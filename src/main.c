@@ -96,6 +96,10 @@ static int interactive_loop(void)
 
     csx_raw_mode(0);
     hist_save();
+    csx_job_shutdown();
+    csx_var_shutdown();
+    csx_alias_shutdown();
+    hist_shutdown();
     return 0;
 }
 
@@ -123,8 +127,14 @@ int main(int argc, char **argv)
     }
 
     csx_var_init();
-    if (cmd)
-        return csx_run_line(cmd);
+    if (cmd) {
+        int r = csx_run_line(cmd);
+        csx_job_shutdown();
+        csx_var_shutdown();
+        csx_alias_shutdown();
+        hist_shutdown();
+        return r;
+    }
 
     int interactive = isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
 
@@ -144,6 +154,10 @@ int main(int argc, char **argv)
                 break;
         }
         free(line);
+        csx_job_shutdown();
+        csx_var_shutdown();
+        csx_alias_shutdown();
+        hist_shutdown();
         return 0;
     }
 

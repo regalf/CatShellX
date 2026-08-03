@@ -86,7 +86,9 @@ static void complete_command(csx_completion *c, const char *prefix)
                     if (!starts_with(de->d_name, prefix))
                         continue;
                     char full[MAXLEN];
-                    snprintf(full, sizeof(full), "%s/%s", d, de->d_name);
+                    int n = snprintf(full, sizeof(full), "%s/%s", d, de->d_name);
+                    if (n < 0 || (size_t)n >= sizeof(full))
+                        continue;
                     if (access(full, X_OK) == 0)
                         add_cand(c, de->d_name);
                 }
@@ -169,9 +171,13 @@ static void complete_path(csx_completion *c, const char *word)
             continue;
 
         char cand[MAXLEN];
-        snprintf(cand, sizeof(cand), "%s%s", outdir, name);
+        int nc = snprintf(cand, sizeof(cand), "%s%s", outdir, name);
+        if (nc < 0 || (size_t)nc >= sizeof(cand))
+            continue;
         char full[MAXLEN];
-        snprintf(full, sizeof(full), "%s/%s", dir, name);
+        int nf = snprintf(full, sizeof(full), "%s/%s", dir, name);
+        if (nf < 0 || (size_t)nf >= sizeof(full))
+            continue;
         struct stat st;
         if (stat(full, &st) == 0 && S_ISDIR(st.st_mode))
             strncat(cand, "/", sizeof(cand) - strlen(cand) - 1);

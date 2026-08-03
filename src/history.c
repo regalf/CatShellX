@@ -133,3 +133,13 @@ const char *hist_find_prefix(const char *p)
     }
     return NULL;
 }
+
+void hist_shutdown(void)
+{
+    int i;
+    for (i = 0; i < hist_count; i++)
+        free(hist[i]);
+    hist_count = 0;
+    hist_nav = 0;
+    hist_search_pos = 0;
+}

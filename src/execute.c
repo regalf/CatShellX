@@ -352,7 +352,7 @@ static int apply_redirs(csx_cmd *c)
     return 0;
 }
 
-static int run_builtin_redirected(csx_cmd *c)
+static int run_builtin_redirected(csx_cmd *c, char **argv)
 {
     int saved[3], bak[3], nsaved = 0;
     int i, j;
@@ -369,6 +369,8 @@ static int run_builtin_redirected(csx_cmd *c)
             int nf = fcntl(fd, F_DUPFD, 10);
             if (nf < 0) {
                 fprintf(stderr, "catshellx: fcntl: %s\n", strerror(errno));
+                for (j = 0; j < nsaved; j++)
+                    close(bak[j]);
                 return 1;
             }
             saved[nsaved] = fd;
@@ -383,12 +385,85 @@ static int run_builtin_redirected(csx_cmd *c)
         }
         return 1;
     }
-    int r = csx_run_builtin(c->words);
+    int r = csx_run_builtin(argv);
     for (j = 0; j < nsaved; j++) {
         dup2(bak[j], saved[j]);
         close(bak[j]);
     }
     return r;
+}
+
+/* ------------------------------------------------------------------ */
+/* Deferred word expansion                                             */
+/* ------------------------------------------------------------------ */
+
+/* Expand the raw tokens of c into a malloc'd NULL-terminated argv
+ * array.  Runs in the parent at execution time so $?, $() and $VAR see
+ * the state left by the previous command.  *out_n gets the word count;
+ * returns NULL on OOM.  Caller frees with argv_free().
+ */
+static char **expand_cmd_words(csx_cmd *c, int *out_n)
+{
+    char **argv;
+    int n = 0;
+    int i;
+
+    argv = calloc(CSX_MAX_WORDS + 1, sizeof(char *));
+    if (!argv) {
+        *out_n = 0;
+        return NULL;
+    }
+    for (i = 0; i < c->nwords; i++) {
+        csx_wordlist wl;
+        size_t k;
+        if (csx_expand_word(c->words[i], &wl) == 0)
+            continue;
+        for (k = 0; k < wl.count; k++) {
+            if (!wl.items[k])
+                continue;
+            if (n < CSX_MAX_WORDS)
+                argv[n++] = wl.items[k];
+            else
+                free(wl.items[k]);
+        }
+        free(wl.items);
+    }
+    argv[n] = NULL;
+    *out_n = n;
+    return argv;
+}
+
+static void argv_free(char **argv, int n)
+{
+    int i;
+    if (!argv)
+        return;
+    for (i = 0; i < n; i++)
+        free(argv[i]);
+    free(argv);
+}
+
+/* Expand a redirection target (raw token) into a concrete filename. */
+static void expand_redir_targets(csx_cmd *c)
+{
+    int i;
+    for (i = 0; i < c->nredirs; i++) {
+        csx_redir *r = &c->redirs[i];
+        csx_wordlist wl;
+        size_t k;
+        if (r->is_dup || !r->target)
+            continue;
+        if (csx_expand_word(r->target, &wl) == 0) {
+            free(r->target);
+            r->target = NULL;
+            continue;
+        }
+        free(r->target);
+        r->target = wl.items[0];
+        for (k = 1; k < wl.count; k++)
+            free(wl.items[k]);
+        free(wl.items);
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -420,19 +495,34 @@ static int run_pipeline(csx_node *node, const char *line)
     if (n <= 0)
         return 0;
 
-    {
-        int ci;
-        for (ci = 0; ci < n; ci++) {
-            csx_cmd *c = &node->cmds[ci];
-            if (c->nwords > 0)
-                csx_alias_expand_cmd(c->words, &c->nwords);
-        }
+    char **argv[CSX_MAX_CMDS];
+    int nargv[CSX_MAX_CMDS];
+    int ci;
+    int has_command = 0;
+
+    for (ci = 0; ci < n; ci++) {
+        csx_cmd *c = &node->cmds[ci];
+        argv[ci] = NULL;
+        nargv[ci] = 0;
+        expand_redir_targets(c);
+        if (c->nwords > 0)
+            argv[ci] = expand_cmd_words(c, &nargv[ci]);
+        if (argv[ci] && nargv[ci] > 0)
+            csx_alias_expand_cmd(argv[ci], &nargv[ci]);
+        if (nargv[ci] > 0 || c->nredirs > 0)
+            has_command = 1;
+    }
+
+    if (!has_command) {
+        for (ci = 0; ci < n; ci++)
+            argv_free(argv[ci], nargv[ci]);
+        return csx_last_status;
     }
 
     /* Fast path: a single builtin with redirections runs in-process. */
-    if (n == 1) {
+    if (n == 1 && nargv[0] > 0) {
         csx_cmd *c = &node->cmds[0];
-        if (c->nwords > 0 && csx_is_builtin(c->words[0])) {
+        if (csx_is_builtin(argv[0][0])) {
             if (node->background) {
                 fflush(NULL);
                 pid_t pid = fork();
@@ -441,7 +531,7 @@ static int run_pipeline(csx_node *node, const char *line)
                     child_signal_reset();
                     if (apply_redirs(c) != 0)
                         _exit(1);
-                    int r = csx_run_builtin(c->words);
+                    int r = csx_run_builtin(argv[0]);
                     fflush(NULL);
                     _exit(r);
                 }
@@ -449,12 +539,20 @@ static int run_pipeline(csx_node *node, const char *line)
                     pid_t p = pid;
                     if (job_control)
                         setpgid(pid, pid);
-                    job_add(pid, 1, &p, line);
+                    if (!job_add(pid, 1, &p, line)) {
+                        fprintf(stderr, "catshellx: job table full\n");
+                        waitpid(pid, NULL, WNOHANG);
+                    }
+                    argv_free(argv[0], nargv[0]);
                     return 0;
                 }
+                argv_free(argv[0], nargv[0]);
+                fprintf(stderr, "catshellx: fork: %s\n", strerror(errno));
                 return 1;
             }
-            return run_builtin_redirected(c);
+            int r = run_builtin_redirected(c, argv[0]);
+            argv_free(argv[0], nargv[0]);
+            return r;
         }
     }
 
@@ -463,16 +561,27 @@ static int run_pipeline(csx_node *node, const char *line)
     pid_t pgid = 0;
     int prevpipe = -1;
     int i;
+    int pipe_ok = 1;
 
     for (i = 0; i < n; i++) {
         csx_cmd *c = &node->cmds[i];
         int curpipe[2] = { -1, -1 };
         if (i < n - 1 && pipe(curpipe) != 0) {
             fprintf(stderr, "catshellx: pipe: %s\n", strerror(errno));
+            pipe_ok = 0;
             break;
         }
         fflush(NULL);
         pid_t pid = fork();
+        if (pid < 0) {
+            fprintf(stderr, "catshellx: fork: %s\n", strerror(errno));
+            pipe_ok = 0;
+            if (curpipe[0] >= 0)
+                close(curpipe[0]);
+            if (curpipe[1] >= 0)
+                close(curpipe[1]);
+            break;
+        }
         if (pid == 0) {
             if (job_control)
                 setpgid(0, pgid ? pgid : 0);
@@ -491,15 +600,15 @@ static int run_pipeline(csx_node *node, const char *line)
                 close(curpipe[1]);
             if (apply_redirs(c) != 0)
                 _exit(1);
-            if (c->nwords > 0) {
-                if (csx_is_builtin(c->words[0])) {
-                    int r = csx_run_builtin(c->words);
-                    fflush(NULL);
-                    _exit(r);
-                }
-                execvp(c->words[0], c->words);
-                fprintf(stderr, "catshellx: %s: %s\n", c->words[0], strerror(errno));
+            if (nargv[i] == 0)
+                _exit(0);
+            if (csx_is_builtin(argv[i][0])) {
+                int r = csx_run_builtin(argv[i]);
+                fflush(NULL);
+                _exit(r);
             }
+            execvp(argv[i][0], argv[i]);
+            fprintf(stderr, "catshellx: %s: %s\n", argv[i][0], strerror(errno));
             _exit(127);
         }
         if (pgid == 0)
@@ -516,27 +625,46 @@ static int run_pipeline(csx_node *node, const char *line)
     if (prevpipe >= 0)
         close(prevpipe);
 
+    int status = 1;
     if (node->background) {
-        if (np > 0)
-            job_add(pgid, np, pids, line);
-        return 0;
+        if (np > 0 && !job_add(pgid, np, pids, line)) {
+            fprintf(stderr, "catshellx: job table full\n");
+            for (i = 0; i < np; i++)
+                waitpid(pids[i], NULL, WNOHANG);
+        }
+    } else if (np > 0) {
+        csx_job *j = job_add(pgid, np, pids, line);
+        if (job_control && tcsetpgrp(shell_terminal, pgid) < 0)
+            perror("catshellx");
+        if (j) {
+            status = wait_foreground(j);
+        } else {
+            fprintf(stderr, "catshellx: job table full\n");
+            for (i = 0; i < np; i++) {
+                int st;
+                pid_t r;
+                do {
+                    r = waitpid(pids[i], &st, 0);
+                } while (r < 0 && errno == EINTR);
+                if (r >= 0 && i == np - 1) {
+                    if (WIFEXITED(st))
+                        status = WEXITSTATUS(st);
+                    else if (WIFSIGNALED(st))
+                        status = 128 + WTERMSIG(st);
+                }
+            }
+        }
+        if (job_control)
+            tcsetpgrp(shell_terminal, shell_pgid);
     }
 
-    if (np == 0)
-        return 1;
-
-    csx_job *j = job_add(pgid, np, pids, line);
-    if (job_control && tcsetpgrp(shell_terminal, pgid) < 0)
-        perror("catshellx");
-    int last = wait_foreground(j);
-    if (job_control)
-        tcsetpgrp(shell_terminal, shell_pgid);
-    return last;
+    for (ci = 0; ci < n; ci++)
+        argv_free(argv[ci], nargv[ci]);
+    return pipe_ok ? status : 1;
 }
 
 int csx_run_line(const char *line)
 {
-    /* comment */
     const char *s = line;
     while (*s == ' ' || *s == '\t')
         s++;
@@ -556,6 +684,7 @@ int csx_run_line(const char *line)
             last = run_pipeline(cur, line);
         else
             last = 1;
+        csx_last_status = last;
         skip_next = 0;
         if (cur->op == CSX_OP_AND && last != 0)
             skip_next = 1;
@@ -565,4 +694,11 @@ int csx_run_line(const char *line)
     csx_free_node(n);
     csx_last_status = last;
     return last;
+}
+
+void csx_job_shutdown(void)
+{
+    int i;
+    for (i = 0; i < JOB_MAX; i++)
+        job_free(&jobs[i]);
 }
