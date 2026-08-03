@@ -34,7 +34,16 @@ SOURCES = src/main.c \
 TARGET = catshellx
 PTYTEST = tests/ptytest
 
-.PHONY: all clean ssh test
+PREFIX ?= /usr/local
+DESTDIR ?=
+BINDIR = $(DESTDIR)$(PREFIX)/bin
+
+PKG_ID ?= com.regalf.catshellx
+PKG_VERSION ?= 0.1.0
+PKG = CatShellX-$(PKG_VERSION).pkg
+PKGMAKER = /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
+
+.PHONY: all clean ssh test install pkg
 
 all: $(TARGET) $(PTYTEST)
 
@@ -65,3 +74,29 @@ clean:
 
 ssh:
 	ssh 192.168.1.9 "cd /Users/regaldragoon200/Desktop/sshserver/CatShellX && make"
+
+install: $(TARGET)
+	install -d $(BINDIR)
+	install -m 755 $(TARGET) $(BINDIR)/$(TARGET)
+	@echo "Installed $(TARGET) to $(BINDIR)"
+	@echo "Note: /usr/local/bin is not in the default Tiger PATH;"
+	@echo "add 'export PATH=\"/usr/local/bin:\$$PATH\"' to ~/.bash_profile."
+
+pkg: $(TARGET)
+	rm -rf /tmp/csx_pkgroot /tmp/csx_Info.plist
+	mkdir -p /tmp/csx_pkgroot/usr/local/bin
+	cp $(TARGET) /tmp/csx_pkgroot/usr/local/bin/$(TARGET)
+	printf '%s\n' \
+	  '<?xml version="1.0" encoding="UTF-8"?>' \
+	  '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+	  '<plist version="1.0">' \
+	  '<dict>' \
+	  '  <key>CFBundleIdentifier</key><string>$(PKG_ID)</string>' \
+	  '  <key>CFBundleName</key><string>CatShellX</string>' \
+	  '  <key>CFBundleShortVersionString</key><string>$(PKG_VERSION)</string>' \
+	  '  <key>CFBundleVersion</key><string>$(PKG_VERSION)</string>' \
+	  '  <key>IFPkgFlagDefaultLocation</key><string>/</string>' \
+	  '</dict>' \
+	  '</plist>' > /tmp/csx_Info.plist
+	$(PKGMAKER) -build -p $(PKG) -f /tmp/csx_pkgroot -i /tmp/csx_Info.plist
+	@echo "Built $(PKG)"

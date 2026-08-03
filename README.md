@@ -94,6 +94,37 @@ Run:
 ./catshellx -v               # version
 ```
 
+### Install
+
+CatShellX is a plain command-line binary, so installation is a copy into
+`PATH`:
+
+```sh
+make install                       # copies to /usr/local/bin/catshellx
+make install PREFIX=$HOME          # or into $HOME/bin
+```
+
+> Tiger note: `/usr/local/bin` is not in the default `PATH` (there is no
+> `/etc/paths` yet). Add this to `~/.bash_profile` (or the equivalent for
+> your login shell):
+>
+> ```sh
+> export PATH="/usr/local/bin:$PATH"
+> ```
+
+### Installer package
+
+To build a double-clickable `.pkg` installer for distribution (uses the
+`PackageMaker` shipped with Tiger's Xcode):
+
+```sh
+make pkg     # produces CatShellX-0.1.0.pkg
+```
+
+The `.pkg` installs `catshellx` to `/usr/local/bin` and is fully managed by
+Apple's Installer (can also be removed via the Installer log / pkgutil-style
+tools of the era).
+
 ## Testing
 
 The project ships a PTY-based test harness (`tests/ptytest`) that drives the
