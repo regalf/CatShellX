@@ -5,7 +5,7 @@ universal **PowerPC/i386** binary in pure C (GNU C99). No runtime
 dependencies — every non-portable libc helper (`getline`, `asprintf`,
 `strcasestr`) is reimplemented for Tiger.
 
-Version 0.1.0
+Version 0.1.1
 
 ---
 
@@ -121,7 +121,7 @@ To build a double-clickable `.pkg` installer for distribution (uses the
 `PackageMaker` shipped with Tiger's Xcode):
 
 ```sh
-make pkg     # produces CatShellX-0.1.0.pkg
+make pkg     # produces CatShellX-0.1.1.pkg
 ```
 
 The `.pkg` installs `catshellx` to `/usr/local/bin` and is fully managed by
