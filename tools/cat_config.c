@@ -635,7 +635,7 @@ static void draw_field(const char *title, const char *label, Field *f)
     fwrite(f->buf + start, 1, (size_t)vis, stdout);
     fputs("\x1b[K", stdout);
     gotoxy(3, pl + (f->pos - start) + 1);
-    printf("\n\n%sInvio: conferma   Esc: annulla%s", C_DIM, C_RESET);
+    printf("\n\n%sEnter: confirm   Esc: cancel%s", C_DIM, C_RESET);
     fflush(stdout);
 }
 
@@ -734,11 +734,11 @@ enum { M_PROMPT, M_TITLE, M_ALIAS, M_BEHAV, M_SAVE, M_QUIT, M_COUNT };
 static int run_prompt_screen(Config *cfg)
 {
     const char *presets[5] = {
-        "Default fish:  user@host cwd \xe2\x9d\xaf (colori)",
+        "Default fish:  user@host cwd \xe2\x9d\xaf (colors)",
         "Minimal:        \\w> ",
         "Bash-like:      \\u@\\h \\w \\$ ",
-        "Fish colorato:  \\e[32m\\u@\\h\\e[0m ...",
-        "Template customa (scrivi la tua)..."
+        "Fish colored:   \\e[32m\\u@\\h\\e[0m ...",
+        "Custom template (type your own)..."
     };
     int sel = 0, top = 0;
     const char *items[6];
@@ -753,11 +753,11 @@ static int run_prompt_screen(Config *cfg)
         items[3] = presets[3];
         items[4] = presets[4];
         items[5] = defitem;
-        draw_list("Prompt - scegli un preset (Invio) o un template custom", items, 6,
-                  sel, &top, "j/k o frecce: naviga   Invio: seleziona   Esc: indietro");
+        draw_list("Prompt - choose a preset (Enter) or a custom template", items, 6,
+                  sel, &top, "j/k or arrows: navigate   Enter: select   Esc: back");
 
         gotoxy(term_rows() - 1, 1);
-        printf(C_DIM "Anteprima: " C_RESET);
+        printf(C_DIM "Preview: " C_RESET);
         fflush(stdout);
         {
             strbuf p;
@@ -782,7 +782,7 @@ static int run_prompt_screen(Config *cfg)
                 Field f;
                 const char *cur = cfg->prompt;
                 field_set(&f, (cur && strcmp(cur, DEFAULT_PROMPT_TPL) != 0) ? cur : "");
-                if (edit_field("Prompt - template custom", "Template", &f) && f.len > 0)
+                if (edit_field("Prompt - custom template", "Template", &f) && f.len > 0)
                     cfg_set_str(&cfg->prompt, f.buf);
                 else if (f.len == 0)
                     cfg_set_str(&cfg->prompt, NULL);
@@ -800,15 +800,15 @@ static int run_title_screen(Config *cfg)
         char items[2][192];
         char tdesc[160];
         sanitize_desc(cfg->title ? cfg->title : "\\u@\\h: \\w", tdesc, sizeof(tdesc));
-        snprintf(items[0], sizeof(items[0]), "Titolo finestra:        [%s]",
+        snprintf(items[0], sizeof(items[0]), "Window title:           [%s]",
                  cfg->title_off ? "OFF" : "ON");
         snprintf(items[1], sizeof(items[1]), "Template:               %s", tdesc);
         char *it[2] = { items[0], items[1] };
-        draw_list("Titolo finestra (OSC 0)", (const char *const *)it, 2, sel, &top,
-                  "j/k: naviga   Invio: attiva/modifica   Esc: indietro");
+        draw_list("Window title (OSC 0)", (const char *const *)it, 2, sel, &top,
+                  "j/k: navigate   Enter: toggle/edit   Esc: back");
 
         gotoxy(term_rows() - 1, 1);
-        printf(C_DIM "Anteprima: " C_RESET);
+        printf(C_DIM "Preview: " C_RESET);
         fflush(stdout);
         {
             strbuf t;
@@ -835,7 +835,7 @@ static int run_title_screen(Config *cfg)
             } else {
                 Field f;
                 field_set(&f, cfg->title ? cfg->title : "");
-                if (edit_field("Titolo - template custom", "Template", &f)) {
+                if (edit_field("Title - custom template", "Template", &f)) {
                     cfg_set_str(&cfg->title, f.len > 0 ? f.buf : NULL);
                     changed = 1;
                 }
@@ -863,12 +863,12 @@ static int run_alias_screen(Config *cfg)
                      cfg->aliases[i].name, cfg->aliases[i].value);
             items[i] = &rowbuf[i * 512];
         }
-        snprintf(&rowbuf[i * 512], 512, "[Aggiungi nuovo alias]");
+        snprintf(&rowbuf[i * 512], 512, "[Add new alias]");
         items[i] = &rowbuf[i * 512];
         items[n] = NULL;
 
         draw_list("Aliases", (const char *const *)items, n, sel, &top,
-                  "j/k: naviga   Invio: modifica   d: elimina   Esc: indietro");
+                  "j/k: navigate   Enter: edit   d: delete   Esc: back");
 
         int k = read_key();
         if (k == K_UP || k == 'k') { if (sel > 0) sel--; }
@@ -890,18 +890,18 @@ static int run_alias_screen(Config *cfg)
                 strncpy(name, cfg->aliases[sel].name, sizeof(name) - 1);
                 name[sizeof(name) - 1] = '\0';
                 field_set(&f, cfg->aliases[sel].value);
-                if (edit_field("Alias - valore", name, &f) && f.len > 0) {
+                if (edit_field("Alias - value", name, &f) && f.len > 0) {
                     cfg_alias_add(cfg, name, f.buf);
                     changed = 1;
                 }
             } else {
                 /* add new */
                 field_set(&f, "");
-                if (edit_field("Nuovo alias", "Nome", &f) && f.len > 0) {
+                if (edit_field("New alias", "Name", &f) && f.len > 0) {
                     strncpy(name, f.buf, sizeof(name) - 1);
                     name[sizeof(name) - 1] = '\0';
                     field_set(&f, "");
-                    if (edit_field("Nuovo alias", "Valore", &f) && f.len > 0) {
+                    if (edit_field("New alias", "Value", &f) && f.len > 0) {
                         cfg_alias_add(cfg, name, f.buf);
                         changed = 1;
                     }
@@ -923,14 +923,14 @@ static int run_behavior_screen(Config *cfg)
         int i;
         snprintf(items[0], sizeof(items[0]), "Autosuggestions          [%s]", cfg->suggest ? "ON" : "OFF");
         snprintf(items[1], sizeof(items[1]), "Syntax highlighting      [%s]", cfg->highlight ? "ON" : "OFF");
-        snprintf(items[2], sizeof(items[2]), "Beeper (bell su errori)  [%s]", cfg->beep ? "ON" : "OFF");
-        snprintf(items[3], sizeof(items[3]), "Titolo finestra          [%s]", cfg->title_off ? "OFF" : "ON");
-        snprintf(items[4], sizeof(items[4]), "Dimensione history       [%d]", cfg->histsize);
+        snprintf(items[2], sizeof(items[2]), "Beeper (bell on errors)  [%s]", cfg->beep ? "ON" : "OFF");
+        snprintf(items[3], sizeof(items[3]), "Window title             [%s]", cfg->title_off ? "OFF" : "ON");
+        snprintf(items[4], sizeof(items[4]), "History size             [%d]", cfg->histsize);
         for (i = 0; i < 5; i++)
             it[i] = items[i];
 
-        draw_list("Comportamento - Invio: attiva/disattiva", (const char *const *)it, 5, sel, &top,
-                  "j/k: naviga   Invio o spazio: attiva/disattiva   Esc: indietro");
+        draw_list("Behavior - Enter: toggle", (const char *const *)it, 5, sel, &top,
+                  "j/k: navigate   Enter or Space: toggle   Esc: back");
 
         int k = read_key();
         if (k == K_UP || k == 'k') { if (sel > 0) sel--; }
@@ -947,7 +947,7 @@ static int run_behavior_screen(Config *cfg)
                 snprintf(buf, sizeof(buf), "%d", cfg->histsize);
                 Field f;
                 field_set(&f, buf);
-                if (edit_field("Dimensione history", "Numero voci (1-1000)", &f) && f.len > 0) {
+                if (edit_field("History size", "Number of entries (1-1000)", &f) && f.len > 0) {
                     int n = atoi(f.buf);
                     if (n < 1) n = 1;
                     if (n > 1000) n = 1000;
@@ -965,10 +965,10 @@ static int run_behavior_screen(Config *cfg)
 static int run_confirm_screen(void)
 {
     cls();
-    printf(C_YELLOW "Configurazione modificata." C_RESET "\n\n");
-    printf("  [s] Salva ed esci\n");
-    printf("  [x] Esci senza salvare\n");
-    printf("  [c] Annulla\n\n");
+    printf(C_YELLOW "Configuration changed." C_RESET "\n\n");
+    printf("  [s] Save and exit\n");
+    printf("  [x] Exit without saving\n");
+    printf("  [c] Cancel\n\n");
     fflush(stdout);
     for (;;) {
         int k = read_key();
@@ -1013,15 +1013,15 @@ int main(void)
     int sel = 0, top = 0;
     while (!quit) {
         char *items[M_COUNT] = {
-            "Prompt (anteprima live)",
-            "Titolo finestra",
+            "Prompt (live preview)",
+            "Window title",
             "Aliases",
-            "Comportamento",
-            "Salva ed esci",
-            "Esci senza salvare",
+            "Behavior",
+            "Save and exit",
+            "Exit without saving",
         };
-        draw_list("CatShellX Configuratore", (const char *const *)items, M_COUNT, sel, &top,
-                  "j/k o frecce: naviga   Invio: seleziona   Esc: esci");
+        draw_list("CatShellX Configurator", (const char *const *)items, M_COUNT, sel, &top,
+                  "j/k or arrows: navigate   Enter: select   Esc: exit");
 
         int k = read_key();
         if (k == K_UP || k == 'k') { if (sel > 0) sel--; }
@@ -1074,12 +1074,12 @@ int main(void)
     raw_mode(0);
     cls();
     if (saved) {
-        printf(C_GREEN "Configurazione salvata in %s%s\n", path, C_RESET);
-        printf(C_DIM "Il backup della versione precedente e' in %s.bak\n"
-                     "Le modifiche si applicano alla prossima shell avviata.%s\n",
+        printf(C_GREEN "Configuration saved to %s%s\n", path, C_RESET);
+        printf(C_DIM "Backup of the previous version is at %s.bak\n"
+                     "Changes apply to the next shell you start.%s\n",
                path, C_RESET);
     } else if (dirty) {
-        printf(C_DIM "Nessuna modifica salvata.%s\n", C_RESET);
+        printf(C_DIM "No changes saved.%s\n", C_RESET);
     }
 
     cfg_free(&cfg);

@@ -56,10 +56,42 @@ static void load_rc(void)
     fclose(f);
 }
 
+/* Make `cat_config` usable even when /usr/local/bin is not in PATH (a
+ * terminal may launch the shell without sourcing ~/.bash_profile). The
+ * user's own alias wins; if the command is already reachable via PATH, or
+ * is not installed at the default location, nothing is added. */
+static void install_default_aliases(void)
+{
+    if (csx_alias_get("cat_config"))
+        return;
+    if (access("/usr/local/bin/cat_config", X_OK) != 0)
+        return;
+    const char *path = getenv("PATH");
+    if (path) {
+        char *copy = strdup(path);
+        if (copy) {
+            char *save = NULL;
+            char *d = strtok_r(copy, ":", &save);
+            while (d) {
+                char full[4096];
+                snprintf(full, sizeof(full), "%s/cat_config", d);
+                if (access(full, X_OK) == 0) {
+                    free(copy);
+                    return;
+                }
+                d = strtok_r(NULL, ":", &save);
+            }
+            free(copy);
+        }
+    }
+    csx_alias_set("cat_config", "/usr/local/bin/cat_config");
+}
+
 static int interactive_loop(void)
 {
     csx_job_init();
     load_rc();
+    install_default_aliases();
     if (csx_raw_mode(1) != 0)
         return 1;
     hist_load();

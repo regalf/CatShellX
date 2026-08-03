@@ -113,8 +113,11 @@ make install PREFIX=$HOME          # or into $HOME/bin
 ```
 
 > Tiger note: `/usr/local/bin` is not in the default `PATH` (there is no
-> `/etc/paths` yet). Add this to `~/.bash_profile` (or the equivalent for
-> your login shell):
+> `/etc/paths` yet). The shell defines a default alias
+> `cat_config='/usr/local/bin/cat_config'` at startup when the binary is
+> installed there but not already reachable, so `cat_config` works even when
+> the terminal launches the shell without sourcing a login profile. To also
+> reach `catshellx` by name from bash, add this to `~/.bash_profile`:
 >
 > ```sh
 > export PATH="/usr/local/bin:$PATH"
@@ -146,16 +149,19 @@ cat_config
 ```
 
 Requires a real terminal (raw mode via termios). `j`/`k` or arrow keys
-navigate, `Enter` selects, `Esc` goes back. Main menu:
+navigate, `Enter` selects, `Esc` goes back. On Tiger, `cat_config` is also
+provided as a shell default alias (`/usr/local/bin/cat_config`) when it is
+not already reachable via `PATH`, so the bare name works no matter how the
+shell was launched. Main menu:
 
 | Entry | What it edits |
 |-------|---------------|
-| **Prompt (anteprima live)** | `set CSX_PROMPT=…` |
-| **Titolo finestra** | `set CSX_TITLE=…` / `set CSX_TITLE_OFF=1` |
+| **Prompt (live preview)** | `set CSX_PROMPT=…` |
+| **Window title** | `set CSX_TITLE=…` / `set CSX_TITLE_OFF=1` |
 | **Aliases** | `alias name='value'` |
-| **Comportamento** | `CSX_SUGGEST`, `CSX_HIGHLIGHT`, `CSX_BEEP`, `CSX_HISTSIZE` |
-| **Salva ed esci** | writes the rc, exits |
-| **Esci senza salvare** | discards changes (confirm prompt if dirty) |
+| **Behavior** | `CSX_SUGGEST`, `CSX_HIGHLIGHT`, `CSX_BEEP`, `CSX_HISTSIZE` |
+| **Save and exit** | writes the rc, exits |
+| **Exit without saving** | discards changes (confirm prompt if dirty) |
 
 ### Prompt screen
 
@@ -173,8 +179,8 @@ Toggle the window title (OSC 0) on/off and edit the `$CSX_TITLE` template
 
 ### Aliases screen
 
-`Enter` edits the selected alias' value; `Enter` on the `[Aggiungi nuovo
-alias]` row asks for name then value; `d` (or `x`/`Del`) deletes. Values are
+`Enter` edits the selected alias' value; `Enter` on the `[Add new alias]`
+row asks for name then value; `d` (or `x`/`Del`) deletes. Values are
 single-quoted on save, double-quoted (escaping `\`/`"`) when they contain a
 `'`.
 
@@ -186,9 +192,9 @@ single-quoted on save, double-quoted (escaping `\`/`"`) when they contain a
 |-----|---------|---------|
 | Autosuggestions | `set CSX_SUGGEST=0` | ON |
 | Syntax highlighting | `set CSX_HIGHLIGHT=0` | ON |
-| Beeper (bell su errori) | `set CSX_BEEP=0` | ON |
-| Titolo finestra | `set CSX_TITLE_OFF=1` | ON (title enabled) |
-| Dimensione history | `set CSX_HISTSIZE=…` | 1000 |
+| Beeper (bell on errors) | `set CSX_BEEP=0` | ON |
+| Window title | `set CSX_TITLE_OFF=1` | ON (title enabled) |
+| History size | `set CSX_HISTSIZE=…` | 1000 |
 
 Only **non-default** values are written to the rc.
 
@@ -201,7 +207,7 @@ Used for the custom prompt/title and alias name/value: `Ctrl-A`/`Home` and
 
 ### Saving
 
-**Salva ed esci** rewrites the rc as a managed block (`set CSX_PROMPT=…`,
+**Save and exit** rewrites the rc as a managed block (`set CSX_PROMPT=…`,
 `set CSX_TITLE=…`, non-default toggles, all aliases) followed by a
 `# --- other settings ---` section holding **every other line verbatim**
 (comments, `export`, your own variables). The previous file is kept as
