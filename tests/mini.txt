@@ -1,0 +1,3 @@
+# minimal: just exit
+@text exit
+@enter

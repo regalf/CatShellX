@@ -1,0 +1,38 @@
+# Stage 9: line-editor extras - undo/redo, kill ring/yank, Alt-D, transpose
+# undo: type hello, Ctrl-_ (undo -> hell), enter -> "hell"
+@text hello
+@ctrl_
+@enter
+# undo then type: world -> Ctrl-_ (worl) -> X -> "worlX"
+@text world
+@ctrl_
+@text X
+@enter
+# kill word back + yank: killtest -> Ctrl-W (kills) -> X -> Ctrl-Y -> "Xkilltest"
+@text killtest
+@ctrl W
+@text X
+@ctrl Y
+@enter
+# transpose: abc -> Ctrl-T -> "acb"
+@text abc
+@ctrl T
+@enter
+# Alt-D kill word forward: one two -> Ctrl-A Ctrl-F Alt-D -> "o two"
+@text one two
+@ctrl A
+@ctrl F
+@altd
+@enter
+# kill ring cycle: a, Ctrl-W; b, Ctrl-W; X, Ctrl-Y (Xb), Alt-Y (Xa)
+@text a
+@ctrl W
+@text b
+@ctrl W
+@text X
+@ctrl Y
+@alty
+@enter
+# exit
+@text exit
+@enter

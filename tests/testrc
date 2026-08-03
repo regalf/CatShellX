@@ -1,0 +1,4 @@
+alias ll='echo aliased-ll'
+alias g='echo aliased-g'
+set MYVAR='hello world'
+set CSX_PROMPT='\u@\h \w \$ '

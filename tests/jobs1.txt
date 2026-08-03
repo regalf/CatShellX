@@ -1,0 +1,45 @@
+# job control: background jobs, fg, Ctrl-Z stop, bg, Ctrl-C
+@text sleep 2 &
+@enter
+@text sleep 1 &
+@enter
+@sleep 200
+@text jobs
+@enter
+@sleep 200
+@text fg %1
+@enter
+@sleep 2500
+@text echo $?
+@enter
+@sleep 200
+@text sleep 3
+@enter
+@sleep 400
+@ctrl Z
+@sleep 300
+@text jobs
+@enter
+@sleep 200
+@text bg %3
+@enter
+@sleep 200
+@text jobs
+@enter
+@sleep 200
+@text fg %3
+@enter
+@sleep 3300
+@text echo $?
+@enter
+@sleep 200
+@text sleep 5
+@enter
+@sleep 400
+@ctrl C
+@sleep 300
+@text echo $?
+@enter
+@sleep 200
+@text exit
+@enter

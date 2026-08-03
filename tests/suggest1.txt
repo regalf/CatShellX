@@ -1,0 +1,18 @@
+# seed history with a command
+@text echo one two three
+@enter
+# type prefix; dimmed suggestion "one two three" should appear; Right accepts it
+@text echo
+@right
+@enter
+# partial prefix + Ctrl+F accepts the suggestion
+@text echo one t
+@ctrl F
+@enter
+# single letter prefix + Ctrl+F
+@text e
+@ctrl F
+@enter
+# exit
+@text exit
+@enter

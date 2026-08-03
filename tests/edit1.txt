@@ -1,0 +1,38 @@
+# Basic typing + enter
+@text echo ciao mondo
+@enter
+# Up-arrow re-runs the previous command
+@up
+@enter
+# backspace then type
+@text a
+@backspace
+@text b
+@enter
+# Ctrl+A jumps to start, then insert "X" -> "Xecho Z"
+@text echo Z
+@ctrl A
+@text X
+@enter
+# Ctrl+E jumps to end, then insert "Y" -> "echo ZY"
+@text echo Z
+@ctrl E
+@text Y
+@enter
+# Ctrl+U kills to start of line
+@text hello
+@ctrl U
+@text world
+@enter
+# Ctrl+K kills to end of line (empty buffer, no-op)
+@text test123
+@ctrl K
+@enter
+# Ctrl+R reverse search for "echo", accept, then run it
+@ctrl R
+@text echo
+@enter
+@enter
+# exit
+@text exit
+@enter

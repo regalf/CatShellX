@@ -1,0 +1,26 @@
+# LCP progress then menu: "./tests/com" -> "comp" (Tab1), menu (Tab2: comp/, complete1.txt)
+@text ls ./tests/com
+@tab
+@tab
+# clear, then dir listing: "./tests/comp/m" matches m1.txt/m2.txt -> menu
+@ctrl U
+@text ls ./tests/comp/
+@text m
+@tab
+# clear, complete the single file and run it
+@ctrl U
+@text ls ./tests/comp/m1.txt
+@enter
+# unique command completion: "ech" -> "echo " (with trailing space)
+@text ech
+@tab
+@text ciao
+@enter
+# ambiguous command completion: "ex" -> menu
+@text ex
+@tab
+@ctrl U
+# unique command: "exi" -> "exit " then run
+@text exi
+@tab
+@enter

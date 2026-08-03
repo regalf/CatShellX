@@ -1,0 +1,55 @@
+# Stage 8: rc-loaded vars/aliases/prompt, set/export/unset, source
+@sleep 300
+@text echo $MYVAR
+@enter
+@sleep 200
+@text echo $GREETING
+@enter
+@sleep 200
+@text ll extra
+@enter
+@sleep 200
+@text type ll
+@enter
+@sleep 200
+@text alias
+@enter
+@sleep 200
+@text g
+@enter
+@sleep 200
+@text set FOO=bar
+@enter
+@sleep 200
+@text echo $FOO
+@enter
+@sleep 200
+@text export FOO=exported
+@enter
+@sleep 200
+@text echo $FOO
+@enter
+@sleep 200
+@text unset FOO
+@enter
+@sleep 200
+@text echo "foo-$FOO-end"
+@enter
+@sleep 200
+@text source /tmp/csx_home/sourcerc
+@enter
+@sleep 200
+@text echo $SOURCED
+@enter
+@sleep 200
+@text src
+@enter
+@sleep 200
+@text unalias ll
+@enter
+@sleep 200
+@text type ll
+@enter
+@sleep 200
+@text exit
+@enter

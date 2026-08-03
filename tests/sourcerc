@@ -1,0 +1,2 @@
+set SOURCED='from-source'
+alias src='echo sourced-alias'

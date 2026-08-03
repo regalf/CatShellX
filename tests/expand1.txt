@@ -1,0 +1,32 @@
+# Stage 6: expansions ($VAR, ${}, $(), $?, braces, globs)
+# $VAR
+@text echo $HOME
+@enter
+# ${VAR}
+@text echo ${HOME}/x
+@enter
+# command substitution
+@text echo $(echo hello world)
+@enter
+# brace expansion
+@text echo a{b,c}d
+@enter
+# glob expansion
+@text echo src/*.c
+@enter
+# $? after a failed command (status from previous line)
+@text false
+@enter
+@text echo $?
+@enter
+# quoting protects expansion
+@text echo '$HOME' '*.c'
+@enter
+# highlight: valid command green, variable magenta, bad command red
+@text echo $HOME
+@enter
+@text no_such_cmd_xyz
+@enter
+# exit
+@text exit
+@enter

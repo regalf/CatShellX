@@ -1,0 +1,11 @@
+# Build artifacts
+catshellx
+tests/ptytest
+
+# sshfs residue
+.fuse_hidden*
+
+# Editor / OS
+.DS_Store
+*.swp
+*~
