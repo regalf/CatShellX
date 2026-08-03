@@ -85,6 +85,9 @@ Build a universal (ppc + i386) binary:
 make
 ```
 
+> A detailed build guide — flags, targets, overrides, troubleshooting — is
+> on the [wiki: Building](https://github.com/regalf/CatShellX/wiki/Building).
+
 Run:
 
 ```sh
