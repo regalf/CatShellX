@@ -160,8 +160,29 @@ static size_t default_prompt(strbuf *out)
     return strlen(user) + 1 + strlen(host) + 1 + strlen(base) + 1 + 1 + 1;
 }
 
+/* Render the window title into out: $CSX_TITLE template if set (same
+ * escapes as the prompt), otherwise user@host: cwd. */
+void csx_build_title(strbuf *out)
+{
+    const char *t = csx_var_get("CSX_TITLE");
+    if (t && *t) {
+        render_custom(out, t);
+        return;
+    }
+    char basebuf[4096];
+    sb_printf(out, "%s@%s: %s",
+              csx_username(), csx_hostname(),
+              csx_cwd_short(basebuf, sizeof(basebuf)));
+}
+
 size_t csx_prompt(strbuf *out)
 {
+    strbuf t;
+    sb_init(&t);
+    csx_build_title(&t);
+    csx_title_set(sb_str(&t));
+    sb_free(&t);
+
     const char *custom = csx_var_get("CSX_PROMPT");
     if (custom && *custom) {
         render_custom(out, custom);

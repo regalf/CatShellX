@@ -9,6 +9,8 @@
 /* ------------------------------------------------------------------ */
 const char *csx_suggest(const char *line)
 {
+    if (!csx_bool_var("CSX_SUGGEST", 1))
+        return NULL;
     const char *h = hist_find_prefix(line);
     if (!h)
         return NULL;

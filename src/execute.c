@@ -195,6 +195,8 @@ static int wait_foreground(csx_job *j)
     int k;
     int stopped = 0;
 
+    csx_title_clear();
+
     for (k = 0; k < j->n; k++) {
         int st;
         pid_t r;

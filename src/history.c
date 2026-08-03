@@ -7,6 +7,7 @@
 #define HIST_MAX 1000
 
 static char *hist[HIST_MAX];
+static int hist_max = HIST_MAX;
 static int hist_count = 0;
 static int hist_nav = 0;
 static int hist_search_pos = 0;
@@ -23,6 +24,12 @@ static const char *hist_path(void)
 
 void hist_load(void)
 {
+    const char *hs = csx_var_get("CSX_HISTSIZE");
+    if (hs && *hs) {
+        int n = atoi(hs);
+        if (n >= 1 && n <= HIST_MAX)
+            hist_max = n;
+    }
     FILE *f = fopen(hist_path(), "r");
     if (!f)
         return;
@@ -34,7 +41,7 @@ void hist_load(void)
             line[--n] = '\0';
         if (n == 0)
             continue;
-        if (hist_count < HIST_MAX)
+        if (hist_count < hist_max)
             hist[hist_count++] = strdup(line);
     }
     free(line);
@@ -48,10 +55,10 @@ void hist_add(const char *line)
         return;
     if (hist_count > 0 && strcmp(hist[hist_count - 1], line) == 0)
         return;
-    if (hist_count >= HIST_MAX) {
+    if (hist_count >= hist_max) {
         free(hist[0]);
-        memmove(hist, hist + 1, (HIST_MAX - 1) * sizeof(char *));
-        hist_count = HIST_MAX - 1;
+        memmove(hist, hist + 1, (size_t)(hist_max - 1) * sizeof(char *));
+        hist_count = hist_max - 1;
     }
     hist[hist_count++] = strdup(line);
     hist_nav = hist_count;

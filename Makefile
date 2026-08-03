@@ -29,7 +29,8 @@ SOURCES = src/main.c \
           src/expand.c \
           src/highlight.c \
           src/vars.c \
-          src/alias.c
+          src/alias.c \
+          src/title.c
 
 TARGET_BASENAME = catshellx
 BUILDDIR = Build
@@ -37,6 +38,7 @@ PKGDIR = Packages
 
 TARGET = $(BUILDDIR)/$(TARGET_BASENAME)
 PTYTEST = $(BUILDDIR)/ptytest
+CATCONFIG = $(BUILDDIR)/cat_config
 
 PREFIX ?= /usr/local
 DESTDIR ?=
@@ -50,7 +52,7 @@ PKGMAKER = /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/Pac
 
 .PHONY: all clean ssh test install pkg dmg
 
-all: $(TARGET) $(PTYTEST)
+all: $(TARGET) $(PTYTEST) $(CATCONFIG)
 
 $(TARGET): $(SOURCES)
 	@mkdir -p $(BUILDDIR)
@@ -61,6 +63,11 @@ $(PTYTEST): tests/ptytest.c
 	@mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
 	@echo "Build complete: $(PTYTEST)"
+
+$(CATCONFIG): tools/cat_config.c src/util.c
+	@mkdir -p $(BUILDDIR)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ tools/cat_config.c src/util.c
+	@echo "Build complete: $(CATCONFIG)"
 
 test: $(TARGET) $(PTYTEST)
 	mkdir -p /tmp/csx_home
@@ -82,17 +89,19 @@ clean:
 ssh:
 	ssh 192.168.1.9 "cd /Users/regaldragoon200/Desktop/sshserver/CatShellX && make"
 
-install: $(TARGET)
+install: $(TARGET) $(CATCONFIG)
 	install -d $(BINDIR)
 	install -m 755 $(TARGET) $(BINDIR)/$(TARGET_BASENAME)
-	@echo "Installed $(TARGET_BASENAME) to $(BINDIR)"
+	install -m 755 $(CATCONFIG) $(BINDIR)/cat_config
+	@echo "Installed $(TARGET_BASENAME) and cat_config to $(BINDIR)"
 	@echo "Note: /usr/local/bin is not in the default Tiger PATH;"
 	@echo "add 'export PATH=\"/usr/local/bin:\$$PATH\"' to ~/.bash_profile."
 
-pkg: $(TARGET)
+pkg: $(TARGET) $(CATCONFIG)
 	rm -rf /tmp/csx_pkgroot /tmp/csx_Info.plist
 	mkdir -p /tmp/csx_pkgroot/usr/local/bin
 	cp $(TARGET) /tmp/csx_pkgroot/usr/local/bin/$(TARGET_BASENAME)
+	cp $(CATCONFIG) /tmp/csx_pkgroot/usr/local/bin/cat_config
 	printf '%s\n' \
 	  '<?xml version="1.0" encoding="UTF-8"?>' \
 	  '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \

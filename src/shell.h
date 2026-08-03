@@ -64,6 +64,7 @@ void csx_job_shutdown(void);
 /* ------------------------------------------------------------------ */
 int  csx_var_name_ok(const char *name);
 const char *csx_var_get(const char *name);
+int  csx_bool_var(const char *name, int def);
 void csx_var_set(const char *name, const char *value, int exported);
 void csx_var_unset(const char *name);
 void csx_var_list(FILE *out, int only_exported);
@@ -127,6 +128,14 @@ void csx_completion_free(csx_completion *c);
 /* Prompt                                                              */
 /* ------------------------------------------------------------------ */
 size_t csx_prompt(strbuf *out);
+void csx_build_title(strbuf *out);
+
+/* ------------------------------------------------------------------ */
+/* Terminal window title (OSC 0, TerminalX/xterm)                      */
+/* ------------------------------------------------------------------ */
+int  csx_title_enabled(void);
+void csx_title_set(const char *t);
+void csx_title_clear(void);
 
 /* ------------------------------------------------------------------ */
 /* Word expansion (tildes, $VAR, ${}, $(), $?, braces, globs)          */

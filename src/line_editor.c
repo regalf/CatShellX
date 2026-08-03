@@ -496,7 +496,8 @@ static void do_tab_complete(editor *e)
         return;
 
     if (c.count == 0) {
-        fputc('\a', stdout);
+        if (csx_bool_var("CSX_BEEP", 1))
+            fputc('\a', stdout);
         fflush(stdout);
         csx_completion_free(&c);
         return;
@@ -529,11 +530,15 @@ static void render(editor *e, const char *sug)
     sb_init(&o);
     sb_printf(&o, "\r%s", e->prompt);
     if (e->len > 0) {
-        strbuf h;
-        sb_init(&h);
-        csx_highlight(e->buf, &h);
-        sb_puts(&o, sb_str(&h));
-        sb_free(&h);
+        if (csx_bool_var("CSX_HIGHLIGHT", 1)) {
+            strbuf h;
+            sb_init(&h);
+            csx_highlight(e->buf, &h);
+            sb_puts(&o, sb_str(&h));
+            sb_free(&h);
+        } else {
+            sb_puts(&o, e->buf);
+        }
     }
     if (sug && *sug) {
         sb_puts(&o, CSX_C_DIM);

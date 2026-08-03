@@ -54,6 +54,22 @@ const char *csx_var_get(const char *name)
     return getenv(name);
 }
 
+/* Boolean config flag: "0"/"off"/"false"/"no" -> 0, "1"/"on"/"true"/"yes"
+ * -> 1, unset -> def. */
+int csx_bool_var(const char *name, int def)
+{
+    const char *v = csx_var_get(name);
+    if (!v || !*v)
+        return def;
+    if (strcmp(v, "0") == 0 || strcmp(v, "off") == 0 ||
+        strcmp(v, "false") == 0 || strcmp(v, "no") == 0)
+        return 0;
+    if (strcmp(v, "1") == 0 || strcmp(v, "on") == 0 ||
+        strcmp(v, "true") == 0 || strcmp(v, "yes") == 0)
+        return 1;
+    return def;
+}
+
 void csx_var_set(const char *name, const char *value, int exported)
 {
     csx_var *v;
