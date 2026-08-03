@@ -32,6 +32,8 @@ SOURCES = src/main.c \
           src/alias.c \
           src/title.c
 
+HEADERS = src/shell.h src/parser.h
+
 TARGET_BASENAME = catshellx
 BUILDDIR = Build
 PKGDIR = Packages
@@ -45,7 +47,7 @@ DESTDIR ?=
 BINDIR = $(DESTDIR)$(PREFIX)/bin
 
 PKG_ID ?= com.regalf.catshellx
-PKG_VERSION ?= 0.1.1
+PKG_VERSION ?= 2.0
 PKG = $(PKGDIR)/CatShellX-$(PKG_VERSION).pkg
 DMG = $(PKGDIR)/CatShellX-$(PKG_VERSION).dmg
 PKGMAKER = /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
@@ -54,7 +56,7 @@ PKGMAKER = /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/Pac
 
 all: $(TARGET) $(PTYTEST) $(CATCONFIG)
 
-$(TARGET): $(SOURCES)
+$(TARGET): $(SOURCES) $(HEADERS)
 	@mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(SOURCES)
 	@echo "Build complete: $(TARGET)"
@@ -64,7 +66,7 @@ $(PTYTEST): tests/ptytest.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
 	@echo "Build complete: $(PTYTEST)"
 
-$(CATCONFIG): tools/cat_config.c src/util.c
+$(CATCONFIG): tools/cat_config.c src/util.c $(HEADERS)
 	@mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ tools/cat_config.c src/util.c
 	@echo "Build complete: $(CATCONFIG)"

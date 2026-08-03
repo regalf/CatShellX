@@ -7,7 +7,7 @@
 #include <sys/types.h>
 
 #define CSX_NAME    "CatShellX"
-#define CSX_VERSION "0.1.1"
+#define CSX_VERSION "2.0"
 
 /* ------------------------------------------------------------------ */
 /* String builder (replaces asprintf/getline, absent on Tiger 10.4)   */
