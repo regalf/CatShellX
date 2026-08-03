@@ -31,8 +31,12 @@ SOURCES = src/main.c \
           src/vars.c \
           src/alias.c
 
-TARGET = catshellx
-PTYTEST = tests/ptytest
+TARGET_BASENAME = catshellx
+BUILDDIR = Build
+PKGDIR = Packages
+
+TARGET = $(BUILDDIR)/$(TARGET_BASENAME)
+PTYTEST = $(BUILDDIR)/ptytest
 
 PREFIX ?= /usr/local
 DESTDIR ?=
@@ -40,18 +44,21 @@ BINDIR = $(DESTDIR)$(PREFIX)/bin
 
 PKG_ID ?= com.regalf.catshellx
 PKG_VERSION ?= 0.1.1
-PKG = CatShellX-$(PKG_VERSION).pkg
+PKG = $(PKGDIR)/CatShellX-$(PKG_VERSION).pkg
+DMG = $(PKGDIR)/CatShellX-$(PKG_VERSION).dmg
 PKGMAKER = /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker
 
-.PHONY: all clean ssh test install pkg
+.PHONY: all clean ssh test install pkg dmg
 
 all: $(TARGET) $(PTYTEST)
 
 $(TARGET): $(SOURCES)
+	@mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(SOURCES)
 	@echo "Build complete: $(TARGET)"
 
 $(PTYTEST): tests/ptytest.c
+	@mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
 	@echo "Build complete: $(PTYTEST)"
 
@@ -69,7 +76,7 @@ test: $(TARGET) $(PTYTEST)
 	rm -f /tmp/csx_home/.catshellxrc /tmp/csx_home/sourcerc
 
 clean:
-	rm -f $(TARGET) src/*.o tests/ptytest
+	rm -rf $(BUILDDIR) $(PKGDIR) tests/ptytest
 	@echo "Clean."
 
 ssh:
@@ -77,15 +84,15 @@ ssh:
 
 install: $(TARGET)
 	install -d $(BINDIR)
-	install -m 755 $(TARGET) $(BINDIR)/$(TARGET)
-	@echo "Installed $(TARGET) to $(BINDIR)"
+	install -m 755 $(TARGET) $(BINDIR)/$(TARGET_BASENAME)
+	@echo "Installed $(TARGET_BASENAME) to $(BINDIR)"
 	@echo "Note: /usr/local/bin is not in the default Tiger PATH;"
 	@echo "add 'export PATH=\"/usr/local/bin:\$$PATH\"' to ~/.bash_profile."
 
 pkg: $(TARGET)
 	rm -rf /tmp/csx_pkgroot /tmp/csx_Info.plist
 	mkdir -p /tmp/csx_pkgroot/usr/local/bin
-	cp $(TARGET) /tmp/csx_pkgroot/usr/local/bin/$(TARGET)
+	cp $(TARGET) /tmp/csx_pkgroot/usr/local/bin/$(TARGET_BASENAME)
 	printf '%s\n' \
 	  '<?xml version="1.0" encoding="UTF-8"?>' \
 	  '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
@@ -98,5 +105,11 @@ pkg: $(TARGET)
 	  '  <key>IFPkgFlagDefaultLocation</key><string>/</string>' \
 	  '</dict>' \
 	  '</plist>' > /tmp/csx_Info.plist
+	@mkdir -p $(PKGDIR)
 	$(PKGMAKER) -build -p $(PKG) -f /tmp/csx_pkgroot -i /tmp/csx_Info.plist
 	@echo "Built $(PKG)"
+
+dmg: pkg
+	@mkdir -p $(PKGDIR)
+	hdiutil create -srcfolder $(PKG) -volname CatShellX -ov $(DMG) >/dev/null
+	@echo "Built $(DMG)"

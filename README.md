@@ -91,10 +91,10 @@ make
 Run:
 
 ```sh
-./catshellx
-./catshellx -c 'echo hi'     # run a single command
-./catshellx -h               # usage
-./catshellx -v               # version
+./Build/catshellx
+./Build/catshellx -c 'echo hi'     # run a single command
+./Build/catshellx -h               # usage
+./Build/catshellx -v               # version
 ```
 
 ### Install
@@ -117,11 +117,13 @@ make install PREFIX=$HOME          # or into $HOME/bin
 
 ### Installer package
 
+The build places the binaries in `Build/` and installers in `Packages/`.
 To build a double-clickable `.pkg` installer for distribution (uses the
-`PackageMaker` shipped with Tiger's Xcode):
+`PackageMaker` shipped with Tiger's Xcode), and a `.dmg` wrapper around it:
 
 ```sh
-make pkg     # produces CatShellX-0.1.1.pkg
+make pkg     # produces Packages/CatShellX-0.1.1.pkg
+make dmg     # produces Packages/CatShellX-0.1.1.dmg (wraps the .pkg)
 ```
 
 The `.pkg` installs `catshellx` to `/usr/local/bin` and is fully managed by
@@ -130,8 +132,9 @@ tools of the era).
 
 ## Testing
 
-The project ships a PTY-based test harness (`tests/ptytest`) that drives the
-shell with scripted keystrokes under a real pseudo-terminal:
+The project ships a PTY-based test harness (`Build/ptytest`, built from
+`tests/ptytest.c`) that drives the shell with scripted keystrokes under a
+real pseudo-terminal:
 
 ```sh
 make test

@@ -1,5 +1,5 @@
 /*
- * ptytest: run ./catshellx under a real PTY and feed it a scripted
+ * ptytest: run Build/catshellx under a real PTY and feed it a scripted
  * keystroke sequence, capturing the output.  Script grammar:
  *   # comment
  *   @text <str>        type literal bytes (no Enter)
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
         dup2(slave, 2);
         close(master);
         setenv("HOME", "/tmp/csx_home", 1);
-        execlp("./catshellx", "catshellx", NULL);
+        execlp("./Build/catshellx", "catshellx", NULL);
         perror("exec");
         _exit(127);
     }

@@ -1,4 +1,6 @@
 # Build artifacts
+Build/
+Packages/
 catshellx
 tests/ptytest
 CatShellX-*.pkg
