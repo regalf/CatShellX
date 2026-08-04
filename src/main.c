@@ -92,6 +92,17 @@ static int interactive_loop(void)
     csx_job_init();
     load_rc();
     install_default_aliases();
+    {
+        strbuf g;
+        sb_init(&g);
+        csx_build_greeting(&g);
+        if (sb_str(&g)[0]) {
+            fputs(sb_str(&g), stdout);
+            fputs("\n", stdout);
+            fflush(stdout);
+        }
+        sb_free(&g);
+    }
     if (csx_raw_mode(1) != 0)
         return 1;
     hist_load();

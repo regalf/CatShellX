@@ -129,6 +129,8 @@ void csx_completion_free(csx_completion *c);
 /* ------------------------------------------------------------------ */
 size_t csx_prompt(strbuf *out);
 void csx_build_title(strbuf *out);
+void csx_render_tpl(strbuf *out, const char *tpl);
+void csx_build_greeting(strbuf *out);
 
 /* ------------------------------------------------------------------ */
 /* Terminal window title (OSC 0, TerminalX/xterm)                      */

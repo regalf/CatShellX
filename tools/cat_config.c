@@ -157,7 +157,9 @@ typedef struct {
 typedef struct {
     char *prompt;     /* NULL => shell default prompt        */
     char *title;      /* NULL => default title template      */
+    char *greet;      /* NULL => no greeting message         */
     int title_off;    /* CSX_TITLE_OFF                       */
+    int greet_off;    /* CSX_GREET_OFF                       */
     int suggest;      /* CSX_SUGGEST  (default 1)            */
     int highlight;    /* CSX_HIGHLIGHT (default 1)           */
     int beep;         /* CSX_BEEP     (default 1)            */
@@ -222,6 +224,7 @@ static void cfg_free(Config *cfg)
     size_t i;
     free(cfg->prompt);
     free(cfg->title);
+    free(cfg->greet);
     for (i = 0; i < cfg->nalias; i++) {
         free(cfg->aliases[i].name);
         free(cfg->aliases[i].value);
@@ -284,6 +287,14 @@ static int parse_set_line(Config *cfg, const char *rest)
     }
     if (strcmp(name, "CSX_TITLE_OFF") == 0) {
         cfg->title_off = atoi(val) != 0;
+        return 1;
+    }
+    if (strcmp(name, "CSX_GREETINGS") == 0) {
+        cfg_set_str(&cfg->greet, val);
+        return 1;
+    }
+    if (strcmp(name, "CSX_GREET_OFF") == 0) {
+        cfg->greet_off = atoi(val) != 0;
         return 1;
     }
     if (strcmp(name, "CSX_SUGGEST") == 0) {
@@ -441,6 +452,10 @@ static int save_rc(Config *cfg, RawLines *raw)
         { fprintf(f, "set CSX_TITLE="); write_quoted(f, cfg->title); fprintf(f, "\n"); }
     if (cfg->title_off)
         fprintf(f, "set CSX_TITLE_OFF=1\n");
+    if (cfg->greet)
+        { fprintf(f, "set CSX_GREETINGS="); write_quoted(f, cfg->greet); fprintf(f, "\n"); }
+    if (cfg->greet_off)
+        fprintf(f, "set CSX_GREET_OFF=1\n");
     if (!cfg->suggest)
         fprintf(f, "set CSX_SUGGEST=0\n");
     if (!cfg->highlight)
@@ -518,9 +533,9 @@ static const char *tpl_cwd_base(char *buf, size_t sz)
     return buf;
 }
 
-/* Render a prompt/title template into out.  '\n' becomes "^J" so the
- * preview stays on a single line. */
-static void render_tpl(const char *tpl, strbuf *out)
+/* Render a prompt/title template into out.  '\n' becomes "^J" unless
+ * real_nl is set, keeping the preview on a single line. */
+static void render_tpl(const char *tpl, strbuf *out, int real_nl)
 {
     size_t i = 0;
     while (tpl[i]) {
@@ -548,7 +563,7 @@ static void render_tpl(const char *tpl, strbuf *out)
                 if (lt && strftime(tbuf, sizeof(tbuf), "%H:%M:%S", lt))
                     sb_puts(out, tbuf);
                 break;
-            case 'n': sb_puts(out, "^J"); break;
+            case 'n': sb_puts(out, real_nl ? "\n" : "^J"); break;
             case '$': sb_putc(out, '$'); break;
             case 'e': sb_putc(out, 0x1b); break;
             default: sb_putc(out, e); break;
@@ -729,7 +744,7 @@ static void sanitize_desc(const char *tpl, char *out, size_t sz)
 /* screens                                                             */
 /* ------------------------------------------------------------------ */
 
-enum { M_PROMPT, M_TITLE, M_ALIAS, M_BEHAV, M_SAVE, M_QUIT, M_COUNT };
+enum { M_PROMPT, M_TITLE, M_GREET, M_ALIAS, M_BEHAV, M_SAVE, M_QUIT, M_COUNT };
 
 static int run_prompt_screen(Config *cfg)
 {
@@ -770,7 +785,7 @@ static int run_prompt_screen(Config *cfg)
                       ? cfg->prompt : "";
             else if (sel == 5) tpl = cfg->prompt ? cfg->prompt : DEFAULT_PROMPT_TPL;
             else tpl = DEFAULT_PROMPT_TPL;
-            render_tpl(tpl, &p);
+            render_tpl(tpl, &p, 0);
             fputs(sb_str(&p), stdout);
             sb_free(&p);
         }
@@ -824,7 +839,7 @@ static int run_title_screen(Config *cfg)
             if (cfg->title_off) {
                 fputs(C_DIM "(disabilitato)" C_RESET, stdout);
             } else {
-                render_tpl(cfg->title ? cfg->title : "\\u@\\h: \\w", &t);
+                render_tpl(cfg->title ? cfg->title : "\\u@\\h: \\w", &t, 0);
                 fputs(sb_str(&t), stdout);
             }
             sb_free(&t);
@@ -845,6 +860,64 @@ static int run_title_screen(Config *cfg)
                 field_set(&f, cfg->title ? cfg->title : "");
                 if (edit_field("Title - custom template", "Template", &f)) {
                     cfg_set_str(&cfg->title, f.len > 0 ? f.buf : NULL);
+                    changed = 1;
+                }
+            }
+        }
+    }
+}
+
+static int run_greeting_screen(Config *cfg)
+{
+    int sel = 0, top = 0;
+    int changed = 0;
+    for (;;) {
+        char items[2][192];
+        char gdesc[160];
+        sanitize_desc(cfg->greet ? cfg->greet : "", gdesc, sizeof(gdesc));
+        snprintf(items[0], sizeof(items[0]), "Greetings:              [%s]",
+                 cfg->greet_off ? "OFF" : (cfg->greet ? "ON" : "OFF"));
+        snprintf(items[1], sizeof(items[1]), "Template:               %s",
+                 cfg->greet ? gdesc : "(none)");
+        char *it[2] = { items[0], items[1] };
+        draw_list("Greetings (welcome message)", (const char *const *)it, 2, sel, &top,
+                  "j/k: navigate   Enter: toggle/edit   Esc: back");
+
+        gotoxy(6, 1);
+        printf(C_DIM "Preview:" C_RESET);
+        fputs("\x1b[K", stdout);
+        {
+            strbuf g;
+            sb_init(&g);
+            if (cfg->greet_off) {
+                fputs(C_DIM "\n(greetings disabled)" C_RESET, stdout);
+            } else if (cfg->greet && *cfg->greet) {
+                render_tpl(cfg->greet, &g, 1);
+                fputs("\n", stdout);
+                fwrite(sb_str(&g), 1, g.len, stdout);
+            } else {
+                fputs(C_DIM "\n(no greeting - set a template to show a welcome message)" C_RESET, stdout);
+            }
+            sb_free(&g);
+        }
+        fputs("\x1b[0J", stdout);
+        gotoxy(term_rows(), 1);
+        fflush(stdout);
+
+        int k = read_key();
+        if (k == K_UP || k == 'k') { if (sel > 0) sel--; }
+        else if (k == K_DOWN || k == 'j') { if (sel < 1) sel++; }
+        else if (k == K_ESC || k == 0x03) return changed;
+        else if (k == K_ENTER || k == '\n') {
+            if (sel == 0) {
+                cfg->greet_off = !cfg->greet_off;
+                changed = 1;
+            } else {
+                Field f;
+                field_set(&f, cfg->greet ? cfg->greet : "");
+                if (edit_field("Greetings - message template",
+                               "Template (\\n for a new line)", &f)) {
+                    cfg_set_str(&cfg->greet, f.len > 0 ? f.buf : NULL);
                     changed = 1;
                 }
             }
@@ -1023,6 +1096,7 @@ int main(void)
         char *items[M_COUNT] = {
             "Prompt (live preview)",
             "Window title",
+            "Greetings",
             "Aliases",
             "Behavior",
             "Save and exit",
@@ -1052,6 +1126,8 @@ int main(void)
                 if (run_prompt_screen(&cfg)) dirty = 1;
             } else if (sel == M_TITLE) {
                 if (run_title_screen(&cfg)) dirty = 1;
+            } else if (sel == M_GREET) {
+                if (run_greeting_screen(&cfg)) dirty = 1;
             } else if (sel == M_ALIAS) {
                 if (run_alias_screen(&cfg)) dirty = 1;
             } else if (sel == M_BEHAV) {

@@ -74,9 +74,10 @@ static const char *csx_cwd_base(char *buf, size_t sz)
     return buf;
 }
 
-static void render_custom(strbuf *out, const char *p)
-{
-    size_t i = 0;
+/* Render a template with prompt escapes: \u \h \s \w \W \d \t \n \$ \e.
+ * Unknown escapes print the escaped character literally. */
+void csx_render_tpl(strbuf *out, const char *p)
+{    size_t i = 0;
     while (p[i]) {
         if (p[i] == '\\' && p[i + 1]) {
             char e = p[i + 1];
@@ -166,13 +167,24 @@ void csx_build_title(strbuf *out)
 {
     const char *t = csx_var_get("CSX_TITLE");
     if (t && *t) {
-        render_custom(out, t);
+        csx_render_tpl(out, t);
         return;
     }
     char basebuf[4096];
     sb_printf(out, "%s@%s: %s",
               csx_username(), csx_hostname(),
               csx_cwd_short(basebuf, sizeof(basebuf)));
+}
+
+/* Render the startup greeting: $CSX_GREETINGS template (same escapes as
+ * the prompt, \n for a new line), suppressed by $CSX_GREET_OFF. */
+void csx_build_greeting(strbuf *out)
+{
+    if (csx_bool_var("CSX_GREET_OFF", 0))
+        return;
+    const char *g = csx_var_get("CSX_GREETINGS");
+    if (g && *g)
+        csx_render_tpl(out, g);
 }
 
 size_t csx_prompt(strbuf *out)
@@ -185,7 +197,7 @@ size_t csx_prompt(strbuf *out)
 
     const char *custom = csx_var_get("CSX_PROMPT");
     if (custom && *custom) {
-        render_custom(out, custom);
+        csx_render_tpl(out, custom);
         return visible_width(sb_str(out));
     }
     return default_prompt(out);
