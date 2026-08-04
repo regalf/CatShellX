@@ -761,8 +761,16 @@ static int run_prompt_screen(Config *cfg)
         fflush(stdout);
         {
             strbuf p;
+            const char *tpl;
             sb_init(&p);
-            render_tpl(cfg->prompt ? cfg->prompt : DEFAULT_PROMPT_TPL, &p);
+            if (sel == 1) tpl = "\\w> ";
+            else if (sel == 2) tpl = "\\u@\\h \\w \\$ ";
+            else if (sel == 4)
+                tpl = (cfg->prompt && strcmp(cfg->prompt, DEFAULT_PROMPT_TPL) != 0)
+                      ? cfg->prompt : "";
+            else if (sel == 5) tpl = cfg->prompt ? cfg->prompt : DEFAULT_PROMPT_TPL;
+            else tpl = DEFAULT_PROMPT_TPL;
+            render_tpl(tpl, &p);
             fputs(sb_str(&p), stdout);
             sb_free(&p);
         }

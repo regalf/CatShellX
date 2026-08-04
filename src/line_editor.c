@@ -541,7 +541,7 @@ static void render(editor *e, const char *sug)
         }
     }
     if (sug && *sug) {
-        sb_puts(&o, CSX_C_DIM);
+        sb_puts(&o, CSX_C_BGRAY);
         sb_puts(&o, sug);
         sb_puts(&o, CSX_C_RESET);
     }
