@@ -167,6 +167,9 @@ typedef struct {
     cfg_alias *aliases;
     size_t nalias;
     size_t alias_cap;
+    char **startup;    /* startup commands, run when the shell starts */
+    size_t nstartup;
+    size_t startup_cap;
 } Config;
 
 #define DEFAULT_HISTSIZE 1000
@@ -219,6 +222,33 @@ static void cfg_alias_del(Config *cfg, size_t i)
     cfg->nalias--;
 }
 
+static void cfg_startup_add(Config *cfg, const char *cmd)
+{
+    size_t i;
+    for (i = 0; i < cfg->nstartup; i++)
+        if (strcmp(cfg->startup[i], cmd) == 0)
+            return;
+    if (cfg->nstartup >= cfg->startup_cap) {
+        size_t nc = cfg->startup_cap ? cfg->startup_cap * 2 : 16;
+        char **nl = realloc(cfg->startup, nc * sizeof(char *));
+        if (!nl)
+            return;
+        cfg->startup = nl;
+        cfg->startup_cap = nc;
+    }
+    cfg->startup[cfg->nstartup++] = strdup(cmd);
+}
+
+static void cfg_startup_del(Config *cfg, size_t i)
+{
+    if (i >= cfg->nstartup)
+        return;
+    free(cfg->startup[i]);
+    memmove(&cfg->startup[i], &cfg->startup[i + 1],
+            (cfg->nstartup - i - 1) * sizeof(char *));
+    cfg->nstartup--;
+}
+
 static void cfg_free(Config *cfg)
 {
     size_t i;
@@ -230,6 +260,9 @@ static void cfg_free(Config *cfg)
         free(cfg->aliases[i].value);
     }
     free(cfg->aliases);
+    for (i = 0; i < cfg->nstartup; i++)
+        free(cfg->startup[i]);
+    free(cfg->startup);
     memset(cfg, 0, sizeof *cfg);
 }
 
@@ -381,8 +414,26 @@ static void parse_rc(const char *path, Config *cfg, RawLines *raw)
     if (!f)
         return;
     char line[1024];
+    int in_startup = 0;
     while (fgets(line, sizeof(line), f)) {
         char *s = trim_ws(line);
+        if (strncmp(s, "# --- startup commands (cat_config) ---", 40) == 0) {
+            in_startup = 1;
+            continue;
+        }
+        if (strncmp(s, "# --- managed settings (cat_config) ---", 38) == 0)
+            continue;
+        if (strncmp(s, "# --- ", 6) == 0) {
+            in_startup = 0;
+            if (*s)
+                raw_add(raw, s);
+            continue;
+        }
+        if (in_startup) {
+            if (*s)
+                cfg_startup_add(cfg, s);
+            continue;
+        }
         if (!*s || *s == '#') {
             if (*s)
                 raw_add(raw, s);
@@ -469,6 +520,12 @@ static int save_rc(Config *cfg, RawLines *raw)
         fprintf(f, "alias %s=", cfg->aliases[i].name);
         write_quoted(f, cfg->aliases[i].value);
         fprintf(f, "\n");
+    }
+
+    if (cfg->nstartup > 0) {
+        fprintf(f, "# --- startup commands (cat_config) ---\n");
+        for (i = 0; i < cfg->nstartup; i++)
+            fprintf(f, "%s\n", cfg->startup[i]);
     }
 
     if (raw->count > 0) {
@@ -744,7 +801,7 @@ static void sanitize_desc(const char *tpl, char *out, size_t sz)
 /* screens                                                             */
 /* ------------------------------------------------------------------ */
 
-enum { M_PROMPT, M_TITLE, M_GREET, M_ALIAS, M_BEHAV, M_SAVE, M_QUIT, M_COUNT };
+enum { M_PROMPT, M_TITLE, M_GREET, M_STARTUP, M_ALIAS, M_BEHAV, M_SAVE, M_QUIT, M_COUNT };
 
 static int run_prompt_screen(Config *cfg)
 {
@@ -925,6 +982,68 @@ static int run_greeting_screen(Config *cfg)
     }
 }
 
+static int run_startup_screen(Config *cfg)
+{
+    int sel = 0, top = 0;
+    int changed = 0;
+    for (;;) {
+        int n = (int)cfg->nstartup + 1; /* + "add" row */
+        char **items = calloc((size_t)n + 1, sizeof(char *));
+        char *rowbuf = calloc((size_t)n, sizeof(char) * 512);
+        size_t i;
+        if (!items || !rowbuf) {
+            free(items);
+            free(rowbuf);
+            return changed;
+        }
+        for (i = 0; i < cfg->nstartup; i++) {
+            snprintf(&rowbuf[i * 512], 512, "%s", cfg->startup[i]);
+            items[i] = &rowbuf[i * 512];
+        }
+        snprintf(&rowbuf[i * 512], 512, "[Add new command]");
+        items[i] = &rowbuf[i * 512];
+        items[n] = NULL;
+
+        draw_list("Startup commands - run when the shell starts",
+                  (const char *const *)items, n, sel, &top,
+                  "j/k: navigate   Enter: edit   d: delete   Esc: back");
+
+        int k = read_key();
+        if (k == K_UP || k == 'k') { if (sel > 0) sel--; }
+        else if (k == K_DOWN || k == 'j') { if (sel < n - 1) sel++; }
+        else if (k == K_ESC || k == 0x03) { free(items); free(rowbuf); return changed; }
+        else if (k == 'd' || k == 'x' || k == K_DEL) {
+            if (sel < (int)cfg->nstartup) {
+                cfg_startup_del(cfg, (size_t)sel);
+                if (sel > (int)cfg->nstartup)
+                    sel = (int)cfg->nstartup;
+                changed = 1;
+            }
+        }
+        else if (k == K_ENTER || k == '\n' || k == 'a') {
+            Field f;
+            if (sel < (int)cfg->nstartup) {
+                field_set(&f, cfg->startup[sel]);
+                if (edit_field("Startup command", "Command line", &f)) {
+                    if (f.len > 0)
+                        cfg_startup_add(cfg, f.buf);
+                    else
+                        cfg_startup_del(cfg, (size_t)sel);
+                    changed = 1;
+                }
+            } else {
+                field_set(&f, "");
+                if (edit_field("New startup command", "Command line", &f) && f.len > 0) {
+                    cfg_startup_add(cfg, f.buf);
+                    changed = 1;
+                }
+            }
+        }
+        free(items);
+        free(rowbuf);
+    }
+}
+
 static int run_alias_screen(Config *cfg)
 {
     int sel = 0, top = 0;
@@ -1097,6 +1216,7 @@ int main(void)
             "Prompt (live preview)",
             "Window title",
             "Greetings",
+            "Startup commands",
             "Aliases",
             "Behavior",
             "Save and exit",
@@ -1128,6 +1248,8 @@ int main(void)
                 if (run_title_screen(&cfg)) dirty = 1;
             } else if (sel == M_GREET) {
                 if (run_greeting_screen(&cfg)) dirty = 1;
+            } else if (sel == M_STARTUP) {
+                if (run_startup_screen(&cfg)) dirty = 1;
             } else if (sel == M_ALIAS) {
                 if (run_alias_screen(&cfg)) dirty = 1;
             } else if (sel == M_BEHAV) {
