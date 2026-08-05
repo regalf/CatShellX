@@ -33,6 +33,14 @@
 @text echo
 @enter
 @enter
+# History navigation: Up twice recalls the command before last
+@text echo first
+@enter
+@text echo second
+@enter
+@up
+@up
+@enter
 # exit
 @text exit
 @enter

@@ -47,7 +47,7 @@ DESTDIR ?=
 BINDIR = $(DESTDIR)$(PREFIX)/bin
 
 PKG_ID ?= com.regalf.catshellx
-PKG_VERSION ?= 0.3.0
+PKG_VERSION ?= 0.3.1
 PKG = $(PKGDIR)/CatShellX-$(PKG_VERSION).pkg
 DMG = $(PKGDIR)/CatShellX-$(PKG_VERSION).dmg
 PKGMAKER = /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker

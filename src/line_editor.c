@@ -193,12 +193,12 @@ static void ed_append(editor *e, const char *s)
     memcpy(e->buf + e->len, s, n + 1);
     e->len += n;
     e->pos = e->len;
+    hist_nav_reset();
     mark_edited(e);
 }
 
 static void mark_edited(editor *e)
 {
-    hist_nav_reset();
     e->undo_toggle = 0;
     if (e->nundo > 0 && e->undoidx == e->nundo - 1 &&
         e->undo[e->undoidx].pos == e->pos &&
@@ -290,6 +290,7 @@ static void yank(editor *e)
     e->yank_base = e->pos - tl;
     e->yank_len = tl;
     e->yank_idx = e->killidx;
+    hist_nav_reset();
     mark_edited(e);
 }
 
@@ -321,6 +322,7 @@ static void yank_older(editor *e)
     e->yank_base = base;
     e->yank_len = strlen(e->kills[next]);
     e->yank_idx = next;
+    hist_nav_reset();
     mark_edited(e);
 }
 
@@ -336,6 +338,7 @@ static void ed_kill_word_fwd(editor *e)
         kill_push(e, e->buf + start, i - start);
         memmove(e->buf + start, e->buf + i, e->len - i + 1);
         e->len -= i - start;
+        hist_nav_reset();
         mark_edited(e);
     }
 }
@@ -355,6 +358,7 @@ static void ed_transpose(editor *e)
         e->buf[e->len - 2] = e->buf[e->len - 1];
         e->buf[e->len - 1] = t;
     }
+    hist_nav_reset();
     mark_edited(e);
 }
 
@@ -366,6 +370,7 @@ static void ed_insert(editor *e, int c)
     e->pos++;
     e->len++;
     e->buf[e->len] = '\0';
+    hist_nav_reset();
     mark_edited(e);
 }
 
@@ -376,6 +381,7 @@ static void ed_del_back(editor *e)
     memmove(e->buf + e->pos - 1, e->buf + e->pos, e->len - e->pos + 1);
     e->pos--;
     e->len--;
+    hist_nav_reset();
     mark_edited(e);
 }
 
@@ -385,6 +391,7 @@ static void ed_del_fwd(editor *e)
         return;
     memmove(e->buf + e->pos, e->buf + e->pos + 1, e->len - e->pos);
     e->len--;
+    hist_nav_reset();
     mark_edited(e);
 }
 
@@ -400,6 +407,7 @@ static void ed_kill_word_back(editor *e)
         memmove(e->buf + i, e->buf + e->pos, e->len - e->pos + 1);
         e->len -= e->pos - i;
         e->pos = i;
+        hist_nav_reset();
         mark_edited(e);
     }
 }
@@ -438,6 +446,7 @@ static void replace_word(editor *e, size_t base, const char *s)
     e->len = e->len - oldlen + sl;
     e->pos = base + sl;
     e->buf[e->len] = '\0';
+    hist_nav_reset();
     mark_edited(e);
 }
 
@@ -677,6 +686,7 @@ char *csx_readline(const char *prompt, size_t prompt_width,
             kill_push(&e, e.buf + e.pos, e.len - e.pos);
             e.len = e.pos;
             e.buf[e.len] = '\0';
+            hist_nav_reset();
             mark_edited(&e);
         }
         else if (k == 0x15) {
@@ -684,6 +694,7 @@ char *csx_readline(const char *prompt, size_t prompt_width,
             memmove(e.buf, e.buf + e.pos, e.len - e.pos + 1);
             e.len -= e.pos;
             e.pos = 0;
+            hist_nav_reset();
             mark_edited(&e);
         }
         else if (k == 0x17) ed_kill_word_back(&e);
@@ -696,6 +707,7 @@ char *csx_readline(const char *prompt, size_t prompt_width,
                 e.cap = strlen(m) + 1;
                 e.len = strlen(m);
                 e.pos = e.len;
+                hist_nav_reset();
                 mark_edited(&e);
             }
             continue;
