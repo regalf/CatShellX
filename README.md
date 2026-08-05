@@ -5,7 +5,7 @@ universal **PowerPC/i386** binary in pure C (GNU C99). No runtime
 dependencies — every non-portable libc helper (`getline`, `asprintf`,
 `strcasestr`) is reimplemented for Tiger.
 
-Version 0.2.0
+Version 0.3.0
 
 ## Screenshots
 
