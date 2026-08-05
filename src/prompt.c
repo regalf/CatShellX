@@ -176,15 +176,19 @@ void csx_build_title(strbuf *out)
               csx_cwd_short(basebuf, sizeof(basebuf)));
 }
 
-/* Render the startup greeting: $CSX_GREETINGS template (same escapes as
- * the prompt, \n for a new line), suppressed by $CSX_GREET_OFF. */
+/* Default greeting, used when $CSX_GREETINGS is not set. */
+static const char *DEFAULT_GREETING_TPL =
+    "\x1b[1;32mWelcome, \\u!\x1b[0m";
+
+/* Render the startup greeting: $CSX_GREETINGS template if set (same
+ * escapes as the prompt, \n for a new line), otherwise the default
+ * welcome message. Suppressed by $CSX_GREET_OFF. */
 void csx_build_greeting(strbuf *out)
 {
     if (csx_bool_var("CSX_GREET_OFF", 0))
         return;
     const char *g = csx_var_get("CSX_GREETINGS");
-    if (g && *g)
-        csx_render_tpl(out, g);
+    csx_render_tpl(out, (g && *g) ? g : DEFAULT_GREETING_TPL);
 }
 
 size_t csx_prompt(strbuf *out)

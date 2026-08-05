@@ -157,7 +157,7 @@ typedef struct {
 typedef struct {
     char *prompt;     /* NULL => shell default prompt        */
     char *title;      /* NULL => default title template      */
-    char *greet;      /* NULL => no greeting message         */
+    char *greet;      /* NULL => default greeting message   */
     int title_off;    /* CSX_TITLE_OFF                       */
     int greet_off;    /* CSX_GREET_OFF                       */
     int suggest;      /* CSX_SUGGEST  (default 1)            */
@@ -637,6 +637,10 @@ static void render_tpl(const char *tpl, strbuf *out, int real_nl)
 static const char *DEFAULT_PROMPT_TPL =
     "\x1b[32m\\u@\\h\x1b[0m \x1b[36m\\w\x1b[0m \x1b[1;33m\xe2\x9d\xaf\x1b[0m ";
 
+/* The shell's default greeting, used when CSX_GREETINGS is not set. */
+static const char *DEFAULT_GREETING_TPL =
+    "\x1b[1;32mWelcome, \\u!\x1b[0m";
+
 /* ------------------------------------------------------------------ */
 /* single-line field editor                                            */
 /* ------------------------------------------------------------------ */
@@ -931,11 +935,11 @@ static int run_greeting_screen(Config *cfg)
     for (;;) {
         char items[2][192];
         char gdesc[160];
-        sanitize_desc(cfg->greet ? cfg->greet : "", gdesc, sizeof(gdesc));
+        sanitize_desc(cfg->greet ? cfg->greet : DEFAULT_GREETING_TPL,
+                      gdesc, sizeof(gdesc));
         snprintf(items[0], sizeof(items[0]), "Greetings:              [%s]",
-                 cfg->greet_off ? "OFF" : (cfg->greet ? "ON" : "OFF"));
-        snprintf(items[1], sizeof(items[1]), "Template:               %s",
-                 cfg->greet ? gdesc : "(none)");
+                 cfg->greet_off ? "OFF" : "ON");
+        snprintf(items[1], sizeof(items[1]), "Template:               %s", gdesc);
         char *it[2] = { items[0], items[1] };
         draw_list("Greetings (welcome message)", (const char *const *)it, 2, sel, &top,
                   "j/k: navigate   Enter: toggle/edit   Esc: back");
@@ -948,12 +952,11 @@ static int run_greeting_screen(Config *cfg)
             sb_init(&g);
             if (cfg->greet_off) {
                 fputs(C_DIM "\n(greetings disabled)" C_RESET, stdout);
-            } else if (cfg->greet && *cfg->greet) {
-                render_tpl(cfg->greet, &g, 1);
+            } else {
+                render_tpl(cfg->greet && *cfg->greet ? cfg->greet : DEFAULT_GREETING_TPL,
+                           &g, 1);
                 fputs("\n", stdout);
                 fwrite(sb_str(&g), 1, g.len, stdout);
-            } else {
-                fputs(C_DIM "\n(no greeting - set a template to show a welcome message)" C_RESET, stdout);
             }
             sb_free(&g);
         }
@@ -971,7 +974,7 @@ static int run_greeting_screen(Config *cfg)
                 changed = 1;
             } else {
                 Field f;
-                field_set(&f, cfg->greet ? cfg->greet : "");
+                field_set(&f, cfg->greet ? cfg->greet : DEFAULT_GREETING_TPL);
                 if (edit_field("Greetings - message template",
                                "Template (\\n for a new line)", &f)) {
                     cfg_set_str(&cfg->greet, f.len > 0 ? f.buf : NULL);
